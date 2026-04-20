@@ -82,6 +82,7 @@ export default function Register() {
     validators: {
       onSubmit: zodFieldErrors(registerSchema),
       onBlur:   zodFieldErrors(registerSchema),
+      onChange:   zodFieldErrors(registerSchema),
     },
     onSubmit: async ({ value }) => {
       setServerError("");
