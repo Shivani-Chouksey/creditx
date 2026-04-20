@@ -1,23 +1,7 @@
-
-// export class BasicInfoDto {
-//   @IsString()
-//   @MinLength(2)
-//   firstName!: string;
-
-//   @IsString()
-//   @MinLength(2)
-//   lastName!: string;
-
-//   @IsEmail()
-//   email!: string;
-
-//   @IsString()
-//   phone!: string;
-// }
-
 import {
   IsEmail,
   IsEnum,
+  IsMongoId,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -35,17 +19,19 @@ export enum GenderEnum {
   PREFER_NOT  = 'prefer-not-to-say',
 }
 
-/**
- * Stage 1 — Basic Information
- *
- * Accepted as multipart/form-data (text fields only at this stage).
- * All string values are trimmed via @Transform before validation runs.
- */
 export class Stage1Dto {
-  @ApiProperty({ example: 'Jane Doe', description: 'Full legal name' })
+  @ApiPropertyOptional({
+    description:
+      'Form to update. Omit to create a brand-new draft.',
+  })
+  @IsOptional()
+  @IsMongoId({ message: 'formId must be a valid ObjectId' })
+  formId?: string;
+
+  @ApiProperty({ example: 'Jane Marie Doe', description: 'Full legal name' })
   @IsString()
   @IsNotEmpty({ message: 'Full name is required' })
-  @MinLength(2,  { message: 'Full name must be at least 2 characters' })
+  @MinLength(8,  { message: 'Full name must be at least 8 characters' })
   @MaxLength(100, { message: 'Full name must not exceed 100 characters' })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   fullName!: string;
@@ -58,12 +44,11 @@ export class Stage1Dto {
   )
   email!: string;
 
-  @ApiProperty({ example: '+919876543210', description: 'E.164 format preferred' })
+  @ApiProperty({ example: '9876543210', description: 'Exactly 10 digits' })
   @IsString()
   @IsNotEmpty({ message: 'Phone number is required' })
-  @Matches(/^\+?[1-9]\d{7,14}$/, {
-    message:
-      'Enter a valid phone number (7–15 digits, optional leading +)',
+  @Matches(/^\d{10}$/, {
+    message: 'Phone number must be exactly 10 digits',
   })
   @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   phone!: string;
