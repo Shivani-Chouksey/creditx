@@ -37,7 +37,7 @@ const COOKIE_BASE = {
   httpOnly: true,
   secure:   isProd,
   // sameSite:'none' as const,
-  sameSite: 'lax' as const,
+  sameSite: 'none' as const,
   path:     '/',
 };
 
