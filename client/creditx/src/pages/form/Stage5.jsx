@@ -4,6 +4,7 @@ import { formsApi } from "../../api/forms.api";
 import { useFormStore } from "../../store/formStore";
 import { stage5Schema, zodValidator } from "../../schema/form.schema";
 import { TextAreaField } from "../../components/form/FormField";
+import { SubmitButton } from "../../components/form/SubmitButton";
 import DocumentPreview from "../../components/form/DocumentPreview";
 
 const Row = ({ label, value }) => (
@@ -37,16 +38,23 @@ export default function Stage5({ onSaved, onBack }) {
 
   const form = useForm({
     defaultValues: stageData.stage5,
-    validators: { onSubmit: zodValidator(stage5Schema) },
+    validators: {
+      onMount:  zodValidator(stage5Schema),
+      onChange: zodValidator(stage5Schema),
+      onSubmit: zodValidator(stage5Schema),
+    },
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
         const parsed = stage5Schema.parse(value);
-        const saved = await formsApi.saveStage5(parsed);
+        const saved = await formsApi.saveStage5(parsed, formId);
         markStageComplete(5, saved);
         onSaved?.(saved);
       } catch (err) {
-        setServerError(err.response?.data?.message ?? "Could not submit the form");
+        const msg = err.response?.data?.message;
+        setServerError(
+          Array.isArray(msg) ? msg.join(", ") : msg ?? "Could not submit the form",
+        );
       }
     },
   });
@@ -109,30 +117,27 @@ export default function Stage5({ onSaved, onBack }) {
         )}
       </Section>
 
-      <TextAreaField form={form} name="reviewNotes" label="Review notes (optional)" rows={3} />
+      <TextAreaField
+        form={form}
+        name="reviewNotes"
+        label="Review notes (optional)"
+        rows={3}
+      />
 
       {serverError && <p className="text-sm text-red-600">{serverError}</p>}
 
-      <form.Subscribe selector={(s) => [s.isSubmitting]}>
-        {([isSubmitting]) => (
-          <div className="flex justify-between gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onBack}
-              className="bg-gray-100 text-gray-700 py-2 px-4 sm:px-6 rounded-lg hover:bg-gray-200 text-sm font-medium"
-            >
-              Back
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-green-600 text-white py-2 px-4 sm:px-6 rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
-            >
-              {isSubmitting ? "Submitting…" : "Submit Form"}
-            </button>
-          </div>
-        )}
-      </form.Subscribe>
+      <div className="flex justify-between gap-2 pt-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="bg-gray-100 text-gray-700 py-2 px-4 sm:px-6 rounded-lg hover:bg-gray-200 text-sm font-medium"
+        >
+          Back
+        </button>
+        <SubmitButton form={form} tone="green" loadingText="Submitting…">
+          Submit Form
+        </SubmitButton>
+      </div>
     </form>
   );
 }
