@@ -18,7 +18,10 @@ async function bootstrap() {
       transformOptions:     { enableImplicitConversion: true },
     }),
   );
-  app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
+  const uploadsRoot = process.env.UPLOADS_DIR
+    ?? (process.env.VERCEL ? '/tmp/uploads' : join(process.cwd(), 'uploads'));
+  app.useStaticAssets(uploadsRoot, { prefix: '/uploads' });
+  //app.useStaticAssets(join(process.cwd(), 'uploads'), { prefix: '/uploads' });
    app.use(cookieParser());
   const logger = new Logger('Bootstrap');
    app.setGlobalPrefix('api/v1');
