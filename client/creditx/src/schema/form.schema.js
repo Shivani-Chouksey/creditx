@@ -1,10 +1,5 @@
 import { z } from "zod";
 
-/**
- * Zod schemas for multi-stage form.
- * These mirror the backend DTOs in server/src/form/dto/*.
- * All validation must pass before hitting the API.
- */
 
 export const GENDERS = ["male", "female", "non-binary", "prefer-not-to-say"];
 
@@ -13,7 +8,7 @@ export const stage1Schema = z.object({
   fullName: z
     .string()
     .trim()
-    .min(2, "Full name must be at least 2 characters")
+    .min(8, "Full name must be at least 8 characters")
     .max(100, "Full name must not exceed 100 characters"),
   email: z
     .email("Enter a valid email address")
@@ -22,10 +17,7 @@ export const stage1Schema = z.object({
   phone: z
     .string()
     .trim()
-    .regex(
-      /^\+?[1-9]\d{7,14}$/,
-      "Enter a valid phone number (7–15 digits, optional leading +)",
-    ),
+    .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"),
   dateOfBirth: z
     .string()
     .regex(
