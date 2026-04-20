@@ -33,10 +33,17 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  SwaggerModule.setup('api/docs', app, document, {
+    customCssUrl: 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css',
+    customJs: [
+      'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js',
+      'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js',
+    ],
+    customfavIcon: 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/favicon-32x32.png',
+  });
   const port = process.env.PORT || 3000;
   await app.listen(port);
-  logger.log(`🚀 HRMS API running on: http://localhost:${port}/api/v1`);
+  logger.log(`🚀  API running on: http://localhost:${port}/api/v1`);
   logger.log(`📚 Swagger docs: http://localhost:${port}/api/docs`);
 }
 bootstrap();
