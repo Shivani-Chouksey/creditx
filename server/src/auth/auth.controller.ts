@@ -99,7 +99,7 @@ export class AuthController {
     // Rotation: set the NEW refresh token back in the cookie so the
     // next request carries a valid one (the old hash is already
     // replaced server-side).
-    res.cookie('accessToken',  result.accessToken,  { ...COOKIE_BASE, maxAge: ACCESS_MAX_AGE });
+    // res.cookie('accessToken',  result.accessToken,  { ...COOKIE_BASE, maxAge: ACCESS_MAX_AGE });
     res.cookie('refreshToken', result.refreshToken, { ...COOKIE_BASE, maxAge: REFRESH_MAX_AGE });
 
     return {
