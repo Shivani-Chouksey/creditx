@@ -1,26 +1,6 @@
-// import { IsString } from "class-validator";
-
-// export class AddressDto {
-//   @IsString()
-//   addressLine1!: string;
-
-//   @IsString()
-//   addressLine2!: string;
-
-//   @IsString()
-//   city!: string;
-
-//   @IsString()
-//   state!: string;
-
-//   @IsString()
-//   country!: string;
-
-//   @IsString()
-//   pincode!: string;
-// }
 
 import {
+  IsMongoId,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -31,12 +11,12 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
-/**
- * Stage 2 — Address Details
- *
- * All fields accepted as multipart/form-data text parts.
- */
+
 export class Stage2Dto {
+  @ApiProperty({ description: 'Form being updated' })
+  @IsMongoId({ message: 'formId must be a valid ObjectId' })
+  formId!: string;
+
   @ApiProperty({ example: '42 Marine Drive', description: 'Primary street address' })
   @IsString()
   @IsNotEmpty({ message: 'Street address is required' })
