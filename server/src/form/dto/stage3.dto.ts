@@ -1,24 +1,7 @@
-// import { IsString, IsNumber, IsOptional } from "class-validator";
-
-// export class ProfessionalDto {
-//   @IsString()
-//   currentCompany!: string;
-
-//   @IsString()
-//   designation!: string;
-
-//   @IsNumber()
-//   experienceYears!: number;
-
-//   @IsOptional()
-//   @IsString()
-//   skills!: string; // comma-separated or array in frontend
-// }
-
-
 import {
   IsArray,
   IsInt,
+  IsMongoId,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -31,19 +14,12 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 
-/**
- * Stage 3 — Professional Details
- *
- * Note on `skills`:
- *   multipart/form-data sends repeated field names for arrays, e.g.
- *   skills=TypeScript&skills=NestJS
- *   OR a comma-separated string: skills=TypeScript,NestJS
- *   The @Transform below normalises both formats.
- *
- * Note on `yearsOfExperience`:
- *   multipart text fields arrive as strings — @Type(() => Number) converts them.
- */
+
 export class Stage3Dto {
+  @ApiProperty({ description: 'Form being updated' })
+  @IsMongoId({ message: 'formId must be a valid ObjectId' })
+  formId!: string;
+
   @ApiProperty({ example: 'Acme Technologies Pvt. Ltd.' })
   @IsString()
   @IsNotEmpty({ message: 'Company name is required' })
