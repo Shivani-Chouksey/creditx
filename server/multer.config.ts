@@ -9,8 +9,10 @@ import { Request } from 'express';
 // ─────────────────────────────────────────────────────────
 //  CONSTANTS
 // ─────────────────────────────────────────────────────────
+const UPLOADS_ROOT = process.env.UPLOADS_DIR
+  ?? (process.env.VERCEL ? '/tmp/uploads' : join(process.cwd(), 'uploads'));
 
-export const DOCUMENTS_UPLOAD_DIR = join(process.cwd(), 'uploads', 'documents');
+export const DOCUMENTS_UPLOAD_DIR = join(UPLOADS_ROOT, 'documents');
 export const MAX_FILE_SIZE_BYTES  = 10 * 1024 * 1024; // 10 MB
 export const MAX_FILE_COUNT       = 5;
 export const MIN_FILE_COUNT       = 2;
