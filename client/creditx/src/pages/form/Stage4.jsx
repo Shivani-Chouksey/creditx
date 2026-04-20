@@ -11,6 +11,7 @@ import {
   zodValidator,
 } from "../../schema/form.schema";
 import { TextAreaField } from "../../components/form/FormField";
+import { SubmitButton } from "../../components/form/SubmitButton";
 import DocumentPreview from "../../components/form/DocumentPreview";
 
 const bytesToMb = (bytes) => (bytes / (1024 * 1024)).toFixed(2);
@@ -45,35 +46,39 @@ export default function Stage4({ onSaved, onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formId]);
 
+  // Skip the min-count check when the user is adding to an existing
+  // set of server-side documents (they already satisfy the minimum).
+  const stage4Validator = ({ value }) => {
+    const existingCount = existingDocs.length;
+    const newCount      = value.documents?.length ?? 0;
+    const totalAfter    = existingCount + newCount;
+
+    if (existingCount === 0 && newCount < MIN_DOCUMENTS) {
+      return {
+        fields: {
+          documents: `Upload at least ${MIN_DOCUMENTS} documents`,
+        },
+      };
+    }
+    if (totalAfter > MAX_DOCUMENTS) {
+      return {
+        fields: {
+          documents: `You can have at most ${MAX_DOCUMENTS} documents (you already have ${existingCount})`,
+        },
+      };
+    }
+    return zodValidator(stage4Schema)({ value });
+  };
+
   const form = useForm({
     defaultValues: {
       documents: [],
       notes: stageData.stage4.notes ?? "",
     },
     validators: {
-      // Skip the min-count check when the user is adding to an existing
-      // set of server-side documents (they already satisfy the minimum).
-      onSubmit: ({ value }) => {
-        const existingCount = existingDocs.length;
-        const newCount      = value.documents?.length ?? 0;
-        const totalAfter    = existingCount + newCount;
-
-        if (existingCount === 0 && newCount < MIN_DOCUMENTS) {
-          return {
-            fields: {
-              documents: `Upload at least ${MIN_DOCUMENTS} documents`,
-            },
-          };
-        }
-        if (totalAfter > MAX_DOCUMENTS) {
-          return {
-            fields: {
-              documents: `You can have at most ${MAX_DOCUMENTS} documents (you already have ${existingCount})`,
-            },
-          };
-        }
-        return zodValidator(stage4Schema)({ value });
-      },
+      onMount:  stage4Validator,
+      onChange: stage4Validator,
+      onSubmit: stage4Validator,
     },
     onSubmit: async ({ value }) => {
       setServerError("");
@@ -87,18 +92,36 @@ export default function Stage4({ onSaved, onBack }) {
           return;
         }
 
-        const saved = await formsApi.saveStage4({
-          documents: value.documents ?? [],
-          notes:     value.notes,
-        });
+        const saved = await formsApi.saveStage4(
+          {
+            documents: value.documents ?? [],
+            notes:     value.notes,
+          },
+          formId,
+        );
         updateStage("stage4", { notes: value.notes ?? "" });
         markStageComplete(4, saved);
         onSaved?.(saved);
       } catch (err) {
-        setServerError(err.response?.data?.message ?? "Failed to upload documents");
+        const msg = err.response?.data?.message;
+        setServerError(
+          Array.isArray(msg) ? msg.join(", ") : msg ?? "Failed to upload documents",
+        );
       }
     },
   });
+
+  // `stage4Validator` closes over `existingDocs`. Re-run it when the
+  // list loads/changes so `canSubmit` reflects the latest count without
+  // requiring the user to touch the form first.
+  useEffect(() => {
+    if (typeof form.validateAllFields === "function") {
+      form.validateAllFields("change");
+    } else if (typeof form.validate === "function") {
+      form.validate("change");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingDocs.length]);
 
   const handleDeleteExisting = async (index) => {
     if (!formId) return;
@@ -246,35 +269,18 @@ export default function Stage4({ onSaved, onBack }) {
 
       {serverError && <p className="text-sm text-red-600">{serverError}</p>}
 
-      <form.Subscribe selector={(s) => [s.isSubmitting]}>
-        {([isSubmitting]) => {
-          // If they already satisfy the minimum, they can proceed without
-          // uploading anything new; the button label reflects that.
-          const hasEnough = existingDocs.length >= MIN_DOCUMENTS;
-          return (
-            <div className="flex justify-between gap-2 pt-2">
-              <button
-                type="button"
-                onClick={onBack}
-                className="bg-gray-100 text-gray-700 py-2 px-4 sm:px-6 rounded-lg hover:bg-gray-200 text-sm font-medium"
-              >
-                Back
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-blue-600 text-white py-2 px-4 sm:px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-              >
-                {isSubmitting
-                  ? "Uploading…"
-                  : hasEnough
-                  ? "Continue"
-                  : "Upload & Continue"}
-              </button>
-            </div>
-          );
-        }}
-      </form.Subscribe>
+      <div className="flex justify-between gap-2 pt-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="bg-gray-100 text-gray-700 py-2 px-4 sm:px-6 rounded-lg hover:bg-gray-200 text-sm font-medium"
+        >
+          Back
+        </button>
+        <SubmitButton form={form} loadingText="Uploading…">
+          {existingDocs.length >= MIN_DOCUMENTS ? "Continue" : "Upload & Continue"}
+        </SubmitButton>
+      </div>
     </form>
   );
 }
