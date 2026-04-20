@@ -4,24 +4,32 @@ import { formsApi } from "../../api/forms.api";
 import { useFormStore } from "../../store/formStore";
 import { stage2Schema, zodValidator } from "../../schema/form.schema";
 import { TextField } from "../../components/form/FormField";
+import { SubmitButton } from "../../components/form/SubmitButton";
 
 export default function Stage2({ onSaved, onBack }) {
-  const { stageData, updateStage, markStageComplete } = useFormStore();
+  const { stageData, updateStage, markStageComplete, formId } = useFormStore();
   const [serverError, setServerError] = useState("");
 
   const form = useForm({
     defaultValues: stageData.stage2,
-    validators: { onSubmit: zodValidator(stage2Schema) },
+    validators: {
+      onMount:  zodValidator(stage2Schema),
+      onChange: zodValidator(stage2Schema),
+      onSubmit: zodValidator(stage2Schema),
+    },
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
         const parsed = stage2Schema.parse(value);
-        const saved = await formsApi.saveStage2(parsed);
+        const saved = await formsApi.saveStage2(parsed, formId);
         updateStage("stage2", parsed);
         markStageComplete(2, saved);
         onSaved?.(saved);
       } catch (err) {
-        setServerError(err.response?.data?.message ?? "Failed to save stage 2");
+        const msg = err.response?.data?.message;
+        setServerError(
+          Array.isArray(msg) ? msg.join(", ") : msg ?? "Failed to save stage 2",
+        );
       }
     },
   });
@@ -50,26 +58,16 @@ export default function Stage2({ onSaved, onBack }) {
 
       {serverError && <p className="text-sm text-red-600">{serverError}</p>}
 
-      <form.Subscribe selector={(s) => [s.isSubmitting]}>
-        {([isSubmitting]) => (
-          <div className="flex justify-between gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onBack}
-              className="bg-gray-100 text-gray-700 py-2 px-4 sm:px-6 rounded-lg hover:bg-gray-200 text-sm font-medium"
-            >
-              Back
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-blue-600 text-white py-2 px-4 sm:px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-            >
-              {isSubmitting ? "Saving…" : "Save & Continue"}
-            </button>
-          </div>
-        )}
-      </form.Subscribe>
+      <div className="flex justify-between gap-2 pt-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="bg-gray-100 text-gray-700 py-2 px-4 sm:px-6 rounded-lg hover:bg-gray-200 text-sm font-medium"
+        >
+          Back
+        </button>
+        <SubmitButton form={form}>Save & Continue</SubmitButton>
+      </div>
     </form>
   );
 }
