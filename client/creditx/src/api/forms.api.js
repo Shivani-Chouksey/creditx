@@ -35,31 +35,46 @@ const unwrap = (res) => res.data?.data ?? res.data;
 
 export const formsApi = {
   // ── Stages ───────────────────────────────────────────────
-  async saveStage1(values) {
-    const res = await apiClient.post(API_URLS.FORMS.STAGE1, toFormData(values));
+  //
+  // Stage 1 accepts an OPTIONAL formId (omit to create a new draft).
+  // Stages 2–5 require the formId of the draft being edited so
+  // concurrent drafts never get crossed.
+  async saveStage1(values, formId) {
+    const payload = formId ? { ...values, formId } : values;
+    const res = await apiClient.post(API_URLS.FORMS.STAGE1, toFormData(payload));
     return unwrap(res);
   },
 
-  async saveStage2(values) {
-    const res = await apiClient.post(API_URLS.FORMS.STAGE2, toFormData(values));
+  async saveStage2(values, formId) {
+    const res = await apiClient.post(
+      API_URLS.FORMS.STAGE2,
+      toFormData({ ...values, formId }),
+    );
     return unwrap(res);
   },
 
-  async saveStage3(values) {
-    const res = await apiClient.post(API_URLS.FORMS.STAGE3, toFormData(values));
+  async saveStage3(values, formId) {
+    const res = await apiClient.post(
+      API_URLS.FORMS.STAGE3,
+      toFormData({ ...values, formId }),
+    );
     return unwrap(res);
   },
 
-  async saveStage4({ documents = [], notes }) {
+  async saveStage4({ documents = [], notes }, formId) {
     const fd = new FormData();
+    fd.append("formId", formId);
     Array.from(documents).forEach((file) => fd.append("documents", file));
     if (notes) fd.append("notes", notes);
     const res = await apiClient.post(API_URLS.FORMS.STAGE4, fd);
     return unwrap(res);
   },
 
-  async saveStage5(values) {
-    const res = await apiClient.post(API_URLS.FORMS.STAGE5, toFormData(values));
+  async saveStage5(values, formId) {
+    const res = await apiClient.post(
+      API_URLS.FORMS.STAGE5,
+      toFormData({ ...values, formId }),
+    );
     return unwrap(res);
   },
 
