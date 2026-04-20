@@ -1,49 +1,8 @@
-// import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-
-// @Schema({ timestamps: true })
-// export class Form {
-//   @Prop() firstName!: string;
-//   @Prop() lastName!: string;
-//   @Prop() email!: string;
-//   @Prop() phone!: string;
-
-//   @Prop() addressLine1!: string;
-//   @Prop() city!: string;
-//   @Prop() state!: string;
-//   @Prop() country!: string;
-//   @Prop() pincode!: string;
-
-//   @Prop() currentCompany!: string;
-//   @Prop() designation!: string;
-//   @Prop() experienceYears!: number;
-//   @Prop() skills!: string;
-
-//   @Prop({
-//     type: {
-//       resume: String,
-//       idProof: String,
-//       photo: String,
-//     },
-//   })
-//   documents!: Record<string, any>;
-
-//   @Prop({ default: 1 })
-//   currentStage!: number;
-
-//   @Prop({ default: "in-progress" })
-//   status!: string;
-// }
-
-// export const FormSchema = SchemaFactory.createForClass(Form);
-
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
 
 export type FormDocument = Form & Document;
 
-// ─────────────────────────────────────────────────────────
-//  ENUMS
-// ─────────────────────────────────────────────────────────
 
 export enum FormStatus {
   IN_PROGRESS = 'in-progress',
@@ -58,9 +17,6 @@ export enum FormStage {
   REVIEW_SUBMIT = 5,
 }
 
-// ─────────────────────────────────────────────────────────
-//  NESTED SUB-SCHEMAS  (_id: false = embedded, no own _id)
-// ─────────────────────────────────────────────────────────
 
 @Schema({ _id: false })
 export class BasicInfoSchema {
@@ -148,23 +104,17 @@ export class UploadedFileSchema {
   uploadedAt!: Date;
 }
 
-// ─────────────────────────────────────────────────────────
-//  ROOT FORM SCHEMA
-// ─────────────────────────────────────────────────────────
 
 @Schema({
   collection: 'forms',
   timestamps: true,
   toJSON: {
     virtuals: true,
-    // transform: (_doc, ret) => {
-    //   delete ret.__v;
-    //   return ret;
-    // },
+   
   },
 })
 export class Form {
-  /** Owner reference — indexed for fast per-user queries */
+  
   @Prop({
     type:     Types.ObjectId,
     ref:      'User',
@@ -172,12 +122,7 @@ export class Form {
     index:    true,
   })
   userId!: Types.ObjectId;
-
-  /**
-   * The highest stage the user has *saved*.
-   * Stage continuity: frontend reads this and forwards the user
-   * directly to (currentStage + 1) or the review page if 5.
-   */
+  
   @Prop({
     type:    Number,
     enum:    [1, 2, 3, 4, 5],
@@ -219,24 +164,18 @@ export const FormSchema = SchemaFactory.createForClass(Form);
 
 // ── Indexes ────────────────────────────────────────────────
 
-/**
- * Partial unique index: only one in-progress form per user.
- * A user can have many completed forms but only one active draft.
- */
+// Non-unique: users may have multiple in-progress drafts at once.
+// Each stage save targets a specific form by formId, so there is no
+// ambiguity when several drafts coexist.
 FormSchema.index(
   { userId: 1, status: 1 },
-  {
-    unique: true,
-    partialFilterExpression: { status: FormStatus.IN_PROGRESS },
-    name:   'unique_active_form_per_user',
-  },
+  { name: 'user_status_idx' },
 );
 
 // Compound index for the listing endpoint
 FormSchema.index({ userId: 1, updatedAt: -1 });
 FormSchema.index({ userId: 1, status: 1, updatedAt: -1 });
 
-// ── Virtuals ───────────────────────────────────────────────
 
 /** Convenience: percentage of stages completed */
 FormSchema.virtual('completionPercent').get(function (this: FormDocument) {
