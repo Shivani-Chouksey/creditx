@@ -3,7 +3,7 @@ import { MulterOptions } from '@nestjs/platform-express/multer/interfaces/multer
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'crypto';
 import { Request } from 'express';
 
 // ─────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ export const documentMulterConfig: MulterOptions = {
     filename: (_req: Request, file: Express.Multer.File, cb) => {
       // uuid + original extension — prevents collisions and path traversal
       const ext       = extname(file.originalname).toLowerCase();
-      const safeName  = `${uuid()}${ext}`;
+      const safeName  = `${randomUUID()}${ext}`;
       cb(null, safeName);
     },
   }),
