@@ -46,7 +46,7 @@ export class AuthService {
   async login(dto: LoginDto) {
     const user = await this.userModel.findOne({ email: dto.email });
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Please create an account first');
     }
 
     const isMatch = await bcrypt.compare(dto.password, user.password);
