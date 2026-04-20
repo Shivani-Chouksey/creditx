@@ -6,10 +6,9 @@ import {
   Post,
   Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBearerAuth,
+ 
   ApiBody,
   ApiOperation,
   ApiResponse,
@@ -20,8 +19,7 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../common/decorators/current-user.decorator';
+
 
 const isProd = process.env.NODE_ENV === 'production';
 const COOKIE_BASE = {
@@ -97,16 +95,13 @@ export class AuthController {
   /* ─────────── LOGOUT ─────────── */
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Sign out — clears cookies and invalidates refresh token' })
   async logout(
-    @CurrentUser('userId')       userId: string,
-    @Res({ passthrough: true })  res:    Response,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
   ) {
-    await this.auth.logout(userId);
+    await this.auth.logout(req.cookies?.refreshToken);
 
-    res.clearCookie('accessToken',  COOKIE_BASE);
     res.clearCookie('refreshToken', COOKIE_BASE);
 
     return { message: 'Logged out' };
