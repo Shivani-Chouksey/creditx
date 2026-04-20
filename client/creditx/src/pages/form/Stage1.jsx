@@ -5,8 +5,10 @@ import { GENDERS, stage1Schema, zodValidator } from "../../schema/form.schema";
 import {
   SelectField,
   TextField,
+  digitsOnly,
 } from "../../components/form/FormField";
 import { useState } from "react";
+import { SubmitButton } from "../../components/form/SubmitButton";
 
 const GENDER_OPTIONS = GENDERS.map((g) => ({
   value: g,
@@ -17,22 +19,29 @@ const GENDER_OPTIONS = GENDERS.map((g) => ({
 }));
 
 export default function Stage1({ onSaved }) {
-  const { stageData, updateStage, markStageComplete } = useFormStore();
+  const { stageData, updateStage, markStageComplete, formId } = useFormStore();
   const [serverError, setServerError] = useState("");
 
   const form = useForm({
     defaultValues: stageData.stage1,
-    validators: { onSubmit: zodValidator(stage1Schema) },
+    validators: {
+      onMount:  zodValidator(stage1Schema),
+      onChange: zodValidator(stage1Schema),
+      onSubmit: zodValidator(stage1Schema),
+    },
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
         const parsed = stage1Schema.parse(value);
-        const saved = await formsApi.saveStage1(parsed);
+        const saved = await formsApi.saveStage1(parsed, formId);
         updateStage("stage1", parsed);
         markStageComplete(1, saved);
         onSaved?.(saved);
       } catch (err) {
-        setServerError(err.response?.data?.message ?? "Failed to save stage 1");
+        const msg = err.response?.data?.message;
+        setServerError(
+          Array.isArray(msg) ? msg.join(", ") : msg ?? "Failed to save stage 1",
+        );
       }
     },
   });
@@ -50,7 +59,19 @@ export default function Stage1({ onSaved }) {
       <TextField form={form} name="fullName" label="Full name" required />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TextField form={form} name="email" label="Email" type="email" required />
-        <TextField form={form} name="phone" label="Phone" placeholder="+919876543210" required />
+        <TextField
+          form={form}
+          name="phone"
+          label="Phone"
+          placeholder="10-digit mobile number"
+          required
+          type="tel"
+          inputMode="numeric"
+          pattern="\d{10}"
+          maxLength={10}
+          sanitize={digitsOnly}
+          autoComplete="tel-national"
+        />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TextField form={form} name="dateOfBirth" label="Date of birth" type="date" />
@@ -59,19 +80,9 @@ export default function Stage1({ onSaved }) {
 
       {serverError && <p className="text-sm text-red-600">{serverError}</p>}
 
-      <form.Subscribe selector={(s) => [s.isSubmitting]}>
-        {([isSubmitting]) => (
-          <div className="flex justify-end">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-blue-600 text-white py-2 px-4 sm:px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-            >
-              {isSubmitting ? "Saving…" : "Save & Continue"}
-            </button>
-          </div>
-        )}
-      </form.Subscribe>
+      <div className="flex justify-end">
+        <SubmitButton form={form}>Save & Continue</SubmitButton>
+      </div>
     </form>
   );
 }
