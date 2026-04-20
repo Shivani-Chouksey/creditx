@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -54,7 +55,7 @@ export interface ResumeInfo {
 // ─────────────────────────────────────────────────────────
 
 @Injectable()
-export class FormsService {
+export class FormsService implements OnModuleInit {
   private readonly logger = new Logger(FormsService.name);
 
   constructor(
@@ -62,17 +63,32 @@ export class FormsService {
     private readonly formModel: Model<FormDocument>,
   ) {}
 
-  // ═══════════════════════════════════════════════════════
-  //  STAGE HANDLERS
-  // ═══════════════════════════════════════════════════════
 
-  /**
-   * Stage 1 — Basic Information
-   * Creates a new form draft if none is in-progress;
-   * otherwise updates the existing draft.
-   */
+  async onModuleInit(): Promise<void> {
+    try {
+      const indexes = await this.formModel.collection.indexes();
+      const legacy = indexes.find(
+        (i) => i.name === 'unique_active_form_per_user',
+      );
+      if (legacy) {
+        await this.formModel.collection.dropIndex('unique_active_form_per_user');
+        this.logger.log('Dropped legacy unique_active_form_per_user index');
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Could not verify/drop legacy unique index: ${(err as Error).message}`,
+      );
+    }
+  }
+
   async saveStage1(userId: string, dto: Stage1Dto): Promise<FormDocument> {
-    const form = await this.getOrCreateDraft(userId);
+    const form = dto.formId
+      ? await this.getOwnedDraft(dto.formId, userId)
+      : await this.formModel.create({
+          userId:       new Types.ObjectId(userId),
+          currentStage: FormStage.BASIC_INFO,
+          status:       FormStatus.IN_PROGRESS,
+        });
 
     form.basicInfo = {
       fullName:    dto.fullName,
@@ -88,12 +104,9 @@ export class FormsService {
     return this.saveSafely(form, 'stage-1');
   }
 
-  /**
-   * Stage 2 — Address Details
-   * Requires stage 1 to be completed first.
-   */
+ 
   async saveStage2(userId: string, dto: Stage2Dto): Promise<FormDocument> {
-    const form = await this.getDraft(userId);
+    const form = await this.getOwnedDraft(dto.formId, userId);
     this.requirePriorStage(form, FormStage.BASIC_INFO, 'Stage 1 (Basic Information)');
 
     form.addressDetails = {
@@ -109,12 +122,9 @@ export class FormsService {
     return this.saveSafely(form, 'stage-2');
   }
 
-  /**
-   * Stage 3 — Professional Details
-   * Requires stages 1 & 2 to be completed.
-   */
+  
   async saveStage3(userId: string, dto: Stage3Dto): Promise<FormDocument> {
-    const form = await this.getDraft(userId);
+    const form = await this.getOwnedDraft(dto.formId, userId);
     this.requirePriorStage(form, FormStage.ADDRESS, 'Stage 2 (Address Details)');
 
     form.professionalDetails = {
@@ -130,15 +140,7 @@ export class FormsService {
     return this.saveSafely(form, 'stage-3');
   }
 
-  /**
-   * Stage 4 — Document Upload
-   *
-   * - Requires stage 3 completed.
-   * - At least MIN_FILE_COUNT (2) files must be uploaded.
-   * - Files are appended so a user can re-upload without losing
-   *   previously submitted documents.
-   * - Rolls back uploaded files if validation fails.
-   */
+ 
   async saveStage4(
     userId: string,
     files: Express.Multer.File[],
@@ -155,7 +157,7 @@ export class FormsService {
 
     let form: FormDocument;
     try {
-      form = await this.getDraft(userId);
+      form = await this.getOwnedDraft(dto.formId, userId);
     } catch (err) {
       await this.deleteFilesFromDisk(files.map((f) => f.path));
       throw err;
@@ -175,13 +177,9 @@ export class FormsService {
     return this.saveSafely(form, 'stage-4');
   }
 
-  /**
-   * Stage 5 — Review & Submit
-   *
-   * Validates that ALL prior stages are filled before marking COMPLETED.
-   */
+ 
   async saveStage5(userId: string, dto: Stage5Dto): Promise<FormDocument> {
-    const form = await this.getDraft(userId);
+    const form = await this.getOwnedDraft(dto.formId, userId);
     this.assertAllStagesComplete(form);
 
     form.reviewNotes  = dto.reviewNotes ?? null;
@@ -192,17 +190,14 @@ export class FormsService {
     return this.saveSafely(form, 'stage-5');
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  READ OPERATIONS
-  // ═══════════════════════════════════════════════════════
-
-  /** Resume support: tells the frontend which stage to navigate to */
+ 
   async getResumeInfo(userId: string): Promise<ResumeInfo> {
     const form = await this.formModel
       .findOne({
         userId: new Types.ObjectId(userId),
         status: FormStatus.IN_PROGRESS,
       })
+      .sort({ updatedAt: -1 })
       .lean()
       .exec();
 
@@ -351,49 +346,22 @@ export class FormsService {
     return this.saveSafely(form, 'remove-document');
   }
 
-  // ═══════════════════════════════════════════════════════
-  //  PRIVATE HELPERS
-  // ═══════════════════════════════════════════════════════
+  private async getOwnedDraft(
+    formId: string,
+    userId: string,
+  ): Promise<FormDocument> {
+    const form = await this.getOwnedForm(formId, userId);
 
-  /**
-   * Get the in-progress draft for a user, or create one if none exists.
-   */
-  private async getOrCreateDraft(userId: string): Promise<FormDocument> {
-    const existing = await this.formModel.findOne({
-      userId: new Types.ObjectId(userId),
-      status: FormStatus.IN_PROGRESS,
-    });
-
-    if (existing) return existing;
-
-    return this.formModel.create({
-      userId:       new Types.ObjectId(userId),
-      currentStage: FormStage.BASIC_INFO,
-      status:       FormStatus.IN_PROGRESS,
-    });
-  }
-
-  /**
-   * Get the in-progress draft — throws 404 if not found.
-   */
-  private async getDraft(userId: string): Promise<FormDocument> {
-    const form = await this.formModel.findOne({
-      userId: new Types.ObjectId(userId),
-      status: FormStatus.IN_PROGRESS,
-    });
-
-    if (!form) {
-      throw new NotFoundException(
-        'No active form found. Please start from Stage 1.',
+    if (form.status !== FormStatus.IN_PROGRESS) {
+      throw new BadRequestException(
+        'This form has already been submitted and can no longer be edited.',
       );
     }
 
     return form;
   }
 
-  /**
-   * Get any form by id and enforce ownership.
-   */
+  
   private async getOwnedForm(
     formId: string,
     userId: string,
@@ -411,17 +379,12 @@ export class FormsService {
     return form;
   }
 
-  /**
-   * Returns the new currentStage — only advances, never goes backward.
-   * e.g. if user re-submits stage 1 while on stage 4, keep stage 4.
-   */
+ 
   private advanceStage(current: number, next: FormStage): number {
     return Math.max(current, next);
   }
 
-  /**
-   * Throw 400 if the required prior stage data is missing.
-   */
+
   private requirePriorStage(
     form:          FormDocument,
     requiredStage: FormStage,
@@ -442,9 +405,7 @@ export class FormsService {
     }
   }
 
-  /**
-   * Validate that ALL stages have been filled before final submission.
-   */
+
   private assertAllStagesComplete(form: FormDocument): void {
     const incomplete: string[] = [];
 
@@ -460,9 +421,7 @@ export class FormsService {
     }
   }
 
-  /**
-   * save() with structured error logging.
-   */
+ 
   private async saveSafely(
     form:  FormDocument,
     stage: string,
@@ -477,10 +436,7 @@ export class FormsService {
     }
   }
 
-  /**
-   * Delete an array of absolute file paths from disk.
-   * Errors are swallowed — we don't want a missing file to break an API call.
-   */
+
   private async deleteFilesFromDisk(paths: string[]): Promise<void> {
     await Promise.allSettled(
       paths.map((p) =>
