@@ -88,15 +88,26 @@ export class AuthService {
     };
   }
 
-  /* ---------------- LOGOUT ---------------- */
-  /**
-   * Invalidates the user's refresh token server-side. After this the
-   * stored hash no longer matches any refreshToken the client might
-   * still hold, so /auth/refresh will reject subsequent calls.
-   */
-  async logout(userId: string) {
+ 
+  // async logout(userId: string) {
+  //   await this.userModel.updateOne(
+  //     { _id: userId },
+  //     { $set: { refreshToken: null } },
+  //   );
+  //   return { success: true };
+  // }
+   async logout(refreshToken?: string) {
+    if (!refreshToken) return { success: true };
+
+    let payload: any;
+    try {
+      payload = this.jwt.verify(refreshToken);
+    } catch {
+      return { success: true };
+    }
+
     await this.userModel.updateOne(
-      { _id: userId },
+      { _id: payload.sub },
       { $set: { refreshToken: null } },
     );
     return { success: true };
