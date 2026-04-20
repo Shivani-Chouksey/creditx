@@ -59,7 +59,7 @@ export class AuthService {
       email: user.email,
     };
 
-    const accessExpiry = process.env.JWT_ACCESS_EXPIRES_IN ?? '60s';
+    const accessExpiry  = process.env.JWT_ACCESS_EXPIRES_IN  ?? '15m';
     const refreshExpiry = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
 
     /* Access Token (1 min) */
@@ -104,11 +104,7 @@ export class AuthService {
 
   /* ---------------- REFRESH ---------------- */
   async refresh(req: any) {
-    console.log("req.cookies",req.cookies);
-    
     const refreshToken = req.cookies?.refreshToken;
-console.log("refreshToken",refreshToken);
-
     if (!refreshToken) {
       throw new UnauthorizedException('Refresh token missing');
     }
@@ -116,8 +112,6 @@ console.log("refreshToken",refreshToken);
     let payload: any;
     try {
       payload = this.jwt.verify(refreshToken);
-      console.log("payload",payload);
-      
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -128,31 +122,25 @@ console.log("refreshToken",refreshToken);
     }
 
     const isValid = await bcrypt.compare(refreshToken, user.refreshToken);
-
     if (!isValid) {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
     /* Generate new tokens (ROTATION) */
-    const newPayload = {
-      sub: user._id,
-      email: user.email,
-    };
+    const newPayload = { sub: user._id, email: user.email };
 
-    const newAccessToken = this.jwt.sign(newPayload, {
-      expiresIn: '60s',
-    });
+    const accessExpiry  = process.env.JWT_ACCESS_EXPIRES_IN  ?? '15m';
+    const refreshExpiry = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
 
-    const newRefreshToken = this.jwt.sign(newPayload, {
-      expiresIn: '7d',
-    });
+    const newAccessToken  = this.jwt.sign(newPayload, { expiresIn: accessExpiry as any });
+    const newRefreshToken = this.jwt.sign(newPayload, { expiresIn: refreshExpiry as any });
 
     /* Save new hashed refresh token */
     user.refreshToken = await bcrypt.hash(newRefreshToken, 10);
     await user.save();
 
     return {
-      accessToken: newAccessToken,
+      accessToken:  newAccessToken,
       refreshToken: newRefreshToken,
     };
   }
