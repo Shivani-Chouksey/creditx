@@ -224,6 +224,12 @@ const KV = ({ k, v }) => (
 export default function FormList() {
   const navigate = useNavigate();
   const hydrateFromServer = useFormStore((s) => s.hydrateFromServer);
+  const startNewForm = useFormStore((s) => s.startNewForm);
+
+  const handleNewForm = () => {
+    startNewForm();
+    navigate({ to: "/multi-select-form" });
+  };
 
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
@@ -319,12 +325,13 @@ export default function FormList() {
             >
               ← Dashboard
             </Link>
-            <Link
-              to="/multi-select-form"
+            <button
+              type="button"
+              onClick={handleNewForm}
               className="flex-1 sm:flex-none text-center bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 whitespace-nowrap"
             >
               + New Form
-            </Link>
+            </button>
           </div>
         </div>
 
@@ -457,12 +464,13 @@ export default function FormList() {
           {!loading && !error && result.data.length === 0 && (
             <div className="bg-white rounded-xl shadow-sm p-8 text-center">
               <p className="text-gray-400 text-sm mb-3">No forms match your filters</p>
-              <Link
-                to="/multi-select-form"
+              <button
+                type="button"
+                onClick={handleNewForm}
                 className="inline-block bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700"
               >
                 Start a new form
-              </Link>
+              </button>
             </div>
           )}
           {!loading && !error && result.data.map((f) => (
@@ -548,12 +556,13 @@ export default function FormList() {
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center">
                     <div className="text-gray-400 text-sm mb-3">No forms match your filters</div>
-                    <Link
-                      to="/multi-select-form"
+                    <button
+                      type="button"
+                      onClick={handleNewForm}
                       className="inline-block bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700"
                     >
                       Start a new form
-                    </Link>
+                    </button>
                   </td>
                 </tr>
               )}
