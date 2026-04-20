@@ -152,6 +152,15 @@ export const useFormStore = create(
           status: "in-progress",
           stageData: emptyStageData(),
         }),
+
+      startNewForm: () =>
+        set({
+          formId: null,
+          currentStage: 1,
+          highestCompletedStage: 0,
+          status: "in-progress",
+          stageData: emptyStageData(),
+        }),
     }),
     {
       name: "creditx-form-draft",
