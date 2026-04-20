@@ -8,20 +8,28 @@ import {
 /**
  * Cheap local check: does the token we have in localStorage still have
  * a future `exp`? No network round-trip. Returns false for missing,
- * malformed, or expired tokens.
+ * malformed, or expired tokens. A short leeway treats tokens that are
+ * about to expire as already expired so we refresh pre-emptively.
  */
+const EXPIRY_LEEWAY_MS = 10 * 1000;
+
+const decodeJwt = (token) => {
+  try {
+    const [, payloadB64] = String(token).split(".");
+    if (!payloadB64) return null;
+    const padded = payloadB64.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+};
+
 export const isAccessTokenValid = () => {
   const token = getAccessToken();
   if (!token) return false;
-  try {
-    const [, payloadB64] = token.split(".");
-    if (!payloadB64) return false;
-    const payload = JSON.parse(atob(payloadB64));
-    if (!payload?.exp) return false;
-    return payload.exp * 1000 > Date.now();
-  } catch {
-    return false;
-  }
+  const payload = decodeJwt(token);
+  if (!payload?.exp) return false;
+  return payload.exp * 1000 > Date.now() + EXPIRY_LEEWAY_MS;
 };
 
 /**
@@ -34,8 +42,8 @@ export const isAccessTokenValid = () => {
 export const restoreSession = async () => {
   if (isAccessTokenValid()) return true;
   try {
-    await refreshAccessToken();
-    return isAccessTokenValid();
+    const token = await refreshAccessToken();
+    return Boolean(token);
   } catch {
     clearAccessToken();
     return false;
