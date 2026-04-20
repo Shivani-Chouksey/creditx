@@ -15,42 +15,39 @@ export default function MultiStepForm() {
 
   const currentStage          = useFormStore((s) => s.currentStage);
   const highestCompletedStage = useFormStore((s) => s.highestCompletedStage);
-  const hydrateFromServer     = useFormStore((s) => s.hydrateFromServer);
   const hydrateStagesFromForm = useFormStore((s) => s.hydrateStagesFromForm);
   const setStep               = useFormStore((s) => s.setStep);
   const reset                 = useFormStore((s) => s.reset);
   const status                = useFormStore((s) => s.status);
+  const formId                = useFormStore((s) => s.formId);
 
-  const [isResuming, setIsResuming] = useState(true);
+  const [isResuming, setIsResuming] = useState(Boolean(formId));
 
   /**
-   * On mount:
-   *   1. Ask the server which stage the user is on (/forms/resume).
-   *   2. If there's an active form, fetch its full contents and
-   *      populate every stage's fields so the user sees everything
-   *      they previously filled.
+   * On mount, decide intent from the store:
+   *   - If `formId` is set (user clicked "Resume" on the list page, which
+   *     calls `hydrateFromServer({ formId })`), fetch that SPECIFIC form
+   *     and hydrate every stage's fields.
+   *   - If `formId` is null (user clicked "+ New Form", which calls
+   *     `startNewForm()` to clear the store), start with empty fields —
+   *     do NOT auto-resume an unrelated in-progress form.
    */
   useEffect(() => {
+    if (!formId) {
+      setIsResuming(false);
+      return;
+    }
+
     let cancelled = false;
+    setIsResuming(true);
 
     (async () => {
       try {
-        const info = await formsApi.getResume();
-        if (cancelled || !info) return;
-
-        if (info.hasActiveForm && info.formId) {
-          const fullForm = await formsApi.getFormById(info.formId);
-          if (cancelled) return;
-          hydrateStagesFromForm(fullForm);
-        } else {
-          hydrateFromServer({
-            formId:       info.formId,
-            currentStage: info.currentStage,
-            status:       "in-progress",
-          });
-        }
+        const fullForm = await formsApi.getFormById(formId);
+        if (cancelled) return;
+        hydrateStagesFromForm(fullForm);
       } catch {
-        // Resume is best-effort: on failure we just let the user start fresh.
+        // Resume is best-effort: on failure we just let the user continue.
       } finally {
         if (!cancelled) setIsResuming(false);
       }
@@ -59,7 +56,7 @@ export default function MultiStepForm() {
     return () => {
       cancelled = true;
     };
-  }, [hydrateFromServer, hydrateStagesFromForm]);
+  }, [formId, hydrateStagesFromForm]);
 
   const handleBack = () => setStep(Math.max(1, currentStage - 1));
 
