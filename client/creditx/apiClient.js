@@ -4,20 +4,52 @@ import { API_URLS } from "./api_endpoints";
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 const ACCESS_TOKEN_KEY = "accessToken";
 
-// ─── Token helpers ───────────────────────────────────────────
+
 export const getAccessToken   = () => localStorage.getItem(ACCESS_TOKEN_KEY);
 export const setAccessToken   = (t) => localStorage.setItem(ACCESS_TOKEN_KEY, t);
 export const clearAccessToken = () => localStorage.removeItem(ACCESS_TOKEN_KEY);
 
-// ─── Axios instance ──────────────────────────────────────────
+
 export const apiClient = axios.create({
   baseURL:         BASE_URL,
   withCredentials: true, // refresh token rides in an HttpOnly cookie
 });
 
-// Attach access token to every outgoing request
-apiClient.interceptors.request.use((config) => {
-  const token = getAccessToken();
+const decodeJwt = (token) => {
+  try {
+    const [, payloadB64] = String(token).split(".");
+    if (!payloadB64) return null;
+    // Normalise base64url → base64 for atob
+    const padded = payloadB64.replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(padded));
+  } catch {
+    return null;
+  }
+};
+
+
+const EXPIRY_LEEWAY_SECONDS = 10;
+const isTokenExpired = (token) => {
+  const payload = decodeJwt(token);
+  if (!payload?.exp) return true;
+  return payload.exp * 1000 <= Date.now() + EXPIRY_LEEWAY_SECONDS * 1000;
+};
+
+
+apiClient.interceptors.request.use(async (config) => {
+  // Never inject or refresh on auth endpoints themselves.
+  if (isAuthPath(config.url)) return config;
+
+  let token = getAccessToken();
+  if (token && isTokenExpired(token)) {
+    try {
+      token = await refreshAccessToken();
+    } catch {
+      // Let the request go out without a token; the response interceptor
+      // will handle the resulting 401 and redirect to /login.
+      token = null;
+    }
+  }
   if (token) {
     config.headers = config.headers ?? {};
     config.headers.Authorization = `Bearer ${token}`;
@@ -25,18 +57,8 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// ─── Refresh manager (single-flight) ─────────────────────────
-/**
- * We share ONE in-flight refresh promise across all concurrent 401s so
- * only one POST /auth/refresh ever runs at a time. The promise is cleared
- * once settled so the next 401 can trigger a new refresh if needed.
- */
-let refreshPromise = null;
 
-/**
- * Calls the refresh endpoint using a RAW axios instance (bypassing our
- * response interceptor) so a 401 here cannot recurse back into itself.
- */
+let refreshPromise = null;
 const runRefresh = async () => {
   const res = await axios.post(
     `${BASE_URL}${API_URLS.AUTH.REFRESH}`,
@@ -50,11 +72,6 @@ const runRefresh = async () => {
   return token;
 };
 
-/**
- * Public: returns a promise that resolves to a fresh access token.
- * Callers can await this whenever they need to pre-emptively refresh
- * (e.g. on app boot when the existing token is expired).
- */
 export const refreshAccessToken = () => {
   if (!refreshPromise) {
     refreshPromise = runRefresh().finally(() => {
@@ -64,7 +81,7 @@ export const refreshAccessToken = () => {
   return refreshPromise;
 };
 
-// ─── Response interceptor: 401 → refresh → retry once ────────
+
 const isAuthPath = (url = "") => {
   const u = String(url);
   return (
@@ -86,13 +103,9 @@ apiClient.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Never try to refresh a token while calling an auth endpoint itself
-    // (login / register / refresh / logout). A 401 there means bad creds
-    // or expired refresh, and a second refresh won't help.
+   
     if (isAuthPath(originalRequest.url) || originalRequest._retry) {
       clearAccessToken();
-      // If it's a regular protected call that already retried, send user
-      // back to login. Auth endpoints surface the error to their caller.
       if (!isAuthPath(originalRequest.url) && typeof window !== "undefined") {
         window.location.href = "/login";
       }
