@@ -80,9 +80,9 @@ export default function Register() {
       confirmPassword: "",
     },
     validators: {
+      onChange: zodFieldErrors(registerSchema),
       onSubmit: zodFieldErrors(registerSchema),
       onBlur:   zodFieldErrors(registerSchema),
-      onChange:   zodFieldErrors(registerSchema),
     },
     onSubmit: async ({ value }) => {
       setServerError("");
@@ -155,7 +155,11 @@ export default function Register() {
                       autoComplete="given-name"
                       placeholder="Jane"
                       value={field.state.value}
-                      onChange={field.handleChange}
+                      onChange={(value) => {
+  field.handleChange(value);
+  field.handleBlur(); // ✅ FORCE instant error
+  }}
+                      // onChange={field.handleChange}
                       onBlur={field.handleBlur}
                       icon={<UserIcon />}
                       invalid={!!error}
@@ -183,7 +187,11 @@ export default function Register() {
                       autoComplete="family-name"
                       placeholder="Doe"
                       value={field.state.value}
-                      onChange={field.handleChange}
+                      // onChange={field.handleChange}
+                      onChange={(value) => {
+  field.handleChange(value);
+  field.handleBlur(); // ✅ FORCE instant error
+  }}
                       onBlur={field.handleBlur}
                       icon={<UserIcon />}
                       invalid={!!error}
@@ -214,7 +222,11 @@ export default function Register() {
                     autoComplete="email"
                     placeholder="you@example.com"
                     value={field.state.value}
-                    onChange={field.handleChange}
+                    // onChange={field.handleChange}
+                    onChange={(value) => {
+  field.handleChange(value);
+  field.handleBlur(); // ✅ FORCE instant error
+  }}
                     onBlur={field.handleBlur}
                     icon={<EmailIcon />}
                     invalid={!!error}
@@ -251,6 +263,7 @@ export default function Register() {
                     onChange={(v) => {
                       field.handleChange(v);
                       setShowStrength(true);
+                      field.handleBlur()
                     }}
                     onBlur={field.handleBlur}
                     invalid={!!error}
@@ -317,7 +330,11 @@ export default function Register() {
                     autoComplete="new-password"
                     placeholder="Re-enter your password"
                     value={field.state.value}
-                    onChange={field.handleChange}
+                    // onChange={field.handleChange}
+                    onChange={(value) => {
+  field.handleChange(value);
+  field.handleBlur(); // ✅ FORCE instant error
+  }}
                     onBlur={field.handleBlur}
                     invalid={!!error}
                   />

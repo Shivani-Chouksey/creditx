@@ -37,6 +37,7 @@ export default function Login() {
       onBlur:   zodFieldErrors(loginSchema),
       onChange:   zodFieldErrors(loginSchema),
     },
+    validateOnChange: true,
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
@@ -111,7 +112,13 @@ export default function Login() {
                     autoComplete="email"
                     placeholder="you@example.com"
                     value={field.state.value}
-                    onChange={field.handleChange}
+                    
+onChange={(value) => {
+  field.handleChange(value);
+  field.handleBlur(); // ✅ FORCE instant error
+  }}
+
+                    // onChange={field.handleChange}
                     onBlur={field.handleBlur}
                     icon={<EmailIcon />}
                     invalid={!!error}
@@ -144,7 +151,13 @@ export default function Login() {
                     id="password"
                     autoComplete="current-password"
                     value={field.state.value}
-                    onChange={field.handleChange}
+                    
+onChange={(value) => {
+  field.handleChange(value);
+  field.handleBlur(); // ✅ FORCE instant error
+  }}
+
+                    // onChange={field.handleChange}
                     onBlur={field.handleBlur}
                     invalid={!!error}
                   />
