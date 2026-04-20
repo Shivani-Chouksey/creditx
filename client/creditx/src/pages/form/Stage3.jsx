@@ -8,25 +8,33 @@ import {
   TextAreaField,
   TextField,
 } from "../../components/form/FormField";
+import { SubmitButton } from "../../components/form/SubmitButton";
 
 export default function Stage3({ onSaved, onBack }) {
-  const { stageData, updateStage, markStageComplete } = useFormStore();
+  const { stageData, updateStage, markStageComplete, formId } = useFormStore();
   const [serverError, setServerError] = useState("");
   const [skillInput, setSkillInput] = useState("");
 
   const form = useForm({
     defaultValues: stageData.stage3,
-    validators: { onSubmit: zodValidator(stage3Schema) },
+    validators: {
+      onMount:  zodValidator(stage3Schema),
+      onChange: zodValidator(stage3Schema),
+      onSubmit: zodValidator(stage3Schema),
+    },
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
         const parsed = stage3Schema.parse(value);
-        const saved = await formsApi.saveStage3(parsed);
+        const saved = await formsApi.saveStage3(parsed, formId);
         updateStage("stage3", parsed);
         markStageComplete(3, saved);
         onSaved?.(saved);
       } catch (err) {
-        setServerError(err.response?.data?.message ?? "Failed to save stage 3");
+        const msg = err.response?.data?.message;
+        setServerError(
+          Array.isArray(msg) ? msg.join(", ") : msg ?? "Failed to save stage 3",
+        );
       }
     },
   });
@@ -122,6 +130,13 @@ export default function Stage3({ onSaved, onBack }) {
                   ))}
                 </ul>
               )}
+              {field.state.meta.errors?.[0] && (
+                <p className="mt-1 text-xs text-red-600">
+                  {typeof field.state.meta.errors[0] === "string"
+                    ? field.state.meta.errors[0]
+                    : field.state.meta.errors[0]?.message}
+                </p>
+              )}
             </div>
           );
         }}
@@ -131,26 +146,16 @@ export default function Stage3({ onSaved, onBack }) {
 
       {serverError && <p className="text-sm text-red-600">{serverError}</p>}
 
-      <form.Subscribe selector={(s) => [s.isSubmitting]}>
-        {([isSubmitting]) => (
-          <div className="flex justify-between gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onBack}
-              className="bg-gray-100 text-gray-700 py-2 px-4 sm:px-6 rounded-lg hover:bg-gray-200 text-sm font-medium"
-            >
-              Back
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-blue-600 text-white py-2 px-4 sm:px-6 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
-            >
-              {isSubmitting ? "Saving…" : "Save & Continue"}
-            </button>
-          </div>
-        )}
-      </form.Subscribe>
+      <div className="flex justify-between gap-2 pt-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="bg-gray-100 text-gray-700 py-2 px-4 sm:px-6 rounded-lg hover:bg-gray-200 text-sm font-medium"
+        >
+          Back
+        </button>
+        <SubmitButton form={form}>Save & Continue</SubmitButton>
+      </div>
     </form>
   );
 }
