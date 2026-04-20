@@ -35,6 +35,7 @@ export default function Login() {
     validators: {
       onSubmit: zodFieldErrors(loginSchema),
       onBlur:   zodFieldErrors(loginSchema),
+      onChange:   zodFieldErrors(loginSchema),
     },
     onSubmit: async ({ value }) => {
       setServerError("");
