@@ -32,12 +32,12 @@ export default function Login() {
 
   const form = useForm({
     defaultValues: { email: "", password: "" },
-    validators: {
-      onSubmit: zodFieldErrors(loginSchema),
-      onBlur:   zodFieldErrors(loginSchema),
-      onChange:   zodFieldErrors(loginSchema),
-    },
-    validateOnChange: true,
+    // validators: {
+    //   onSubmit: zodFieldErrors(loginSchema),
+    //   onBlur: zodFieldErrors(loginSchema),
+    //   onChange: zodFieldErrors(loginSchema),
+    // },
+    // validateOnChange: true,
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
@@ -52,7 +52,7 @@ export default function Login() {
       } catch (err) {
         setServerError(
           err?.response?.data?.message ||
-            "Unable to sign in. Check your credentials and try again.",
+          "Unable to sign in. Check your credentials and try again.",
         );
       }
     },
@@ -98,7 +98,12 @@ export default function Login() {
           className="space-y-4"
         >
           {/* Email */}
-          <form.Field name="email">
+          <form.Field name="email" validators={{
+            onChange: ({ value }) => {
+              const result = loginSchema.shape.email.safeParse(value);
+              return result.success ? undefined : result.error.issues[0].message;
+            },
+          }}>
             {(field) => {
               const error = field.state.meta.errors?.[0];
               return (
@@ -112,16 +117,10 @@ export default function Login() {
                     autoComplete="email"
                     placeholder="you@example.com"
                     value={field.state.value}
-                    
-onChange={(value) => {
-  field.handleChange(value);
-  field.handleBlur(); // ✅ FORCE instant error
-  }}
-
-                    // onChange={field.handleChange}
+                    onChange={field.handleChange}
                     onBlur={field.handleBlur}
                     icon={<EmailIcon />}
-                    invalid={!!error}
+                    invalid={field.state.meta.isTouched && !!error}
                   />
                   {error && (
                     <p className="text-red-600 text-xs mt-1">
@@ -134,7 +133,12 @@ onChange={(value) => {
           </form.Field>
 
           {/* Password */}
-          <form.Field name="password">
+          <form.Field name="password" validators={{
+            onChange: ({ value }) => {
+              const result = loginSchema.shape.password.safeParse(value);
+              return result.success ? undefined : result.error.issues[0].message;
+            },
+          }} >
             {(field) => {
               const error = field.state.meta.errors?.[0];
               return (
@@ -151,15 +155,9 @@ onChange={(value) => {
                     id="password"
                     autoComplete="current-password"
                     value={field.state.value}
-                    
-onChange={(value) => {
-  field.handleChange(value);
-  field.handleBlur(); // ✅ FORCE instant error
-  }}
-
-                    // onChange={field.handleChange}
+                    onChange={field.handleChange}
                     onBlur={field.handleBlur}
-                    invalid={!!error}
+                    invalid={field.state.meta.isTouched && !!error}
                   />
                   {error && (
                     <p className="text-red-600 text-xs mt-1">

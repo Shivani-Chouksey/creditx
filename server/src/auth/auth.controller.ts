@@ -37,7 +37,7 @@ const COOKIE_BASE = {
   httpOnly: true,
   secure:   isProd,
   // sameSite:'none' as const,
-  // sameSite: 'lax' as const,
+  sameSite: 'lax' as const,
   path:     '/',
 };
 
@@ -73,7 +73,7 @@ export class AuthController {
     // Set BOTH tokens as HTTP-only cookies (spec requires cookie-based
     // auth in addition to Bearer). The access token is also returned
     // in the body so clients may use the Authorization header.
-    res.cookie('accessToken',  result.accessToken,  { ...COOKIE_BASE, maxAge: ACCESS_MAX_AGE });
+    // res.cookie('accessToken',  result.accessToken,  { ...COOKIE_BASE, maxAge: ACCESS_MAX_AGE });
     res.cookie('refreshToken', result.refreshToken, { ...COOKIE_BASE, maxAge: REFRESH_MAX_AGE });
 
     return {

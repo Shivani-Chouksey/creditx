@@ -52,18 +52,18 @@ const zodFieldErrors = (schema) => ({ value }) => {
 /* Password strength evaluated against independent criteria */
 const passwordChecks = (pw = "") => [
   { label: "At least 8 characters", ok: pw.length >= 8 },
-  { label: "One uppercase letter",  ok: /[A-Z]/.test(pw) },
-  { label: "One lowercase letter",  ok: /[a-z]/.test(pw) },
-  { label: "One number",            ok: /[0-9]/.test(pw) },
+  { label: "One uppercase letter", ok: /[A-Z]/.test(pw) },
+  { label: "One lowercase letter", ok: /[a-z]/.test(pw) },
+  { label: "One number", ok: /[0-9]/.test(pw) },
   { label: "One special character", ok: /[^A-Za-z0-9]/.test(pw) },
 ];
 
 const strengthFromScore = (score) => {
-  if (score <= 1) return { label: "Very weak", color: "bg-red-500",    width: "20%" };
-  if (score === 2) return { label: "Weak",      color: "bg-orange-500", width: "40%" };
-  if (score === 3) return { label: "Fair",      color: "bg-yellow-500", width: "60%" };
-  if (score === 4) return { label: "Good",      color: "bg-lime-500",   width: "80%" };
-  return            { label: "Strong",    color: "bg-green-500",  width: "100%" };
+  if (score <= 1) return { label: "Very weak", color: "bg-red-500", width: "20%" };
+  if (score === 2) return { label: "Weak", color: "bg-orange-500", width: "40%" };
+  if (score === 3) return { label: "Fair", color: "bg-yellow-500", width: "60%" };
+  if (score === 4) return { label: "Good", color: "bg-lime-500", width: "80%" };
+  return { label: "Strong", color: "bg-green-500", width: "100%" };
 };
 
 export default function Register() {
@@ -79,11 +79,11 @@ export default function Register() {
       password: "",
       confirmPassword: "",
     },
-    validators: {
-      onChange: zodFieldErrors(registerSchema),
-      onSubmit: zodFieldErrors(registerSchema),
-      onBlur:   zodFieldErrors(registerSchema),
-    },
+    // validators: {
+    //   onChange: zodFieldErrors(registerSchema),
+    //   onSubmit: zodFieldErrors(registerSchema),
+    //   onBlur: zodFieldErrors(registerSchema),
+    // },
     onSubmit: async ({ value }) => {
       setServerError("");
       try {
@@ -142,7 +142,12 @@ export default function Register() {
         >
           {/* Names */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <form.Field name="firstName">
+            <form.Field name="firstName" validators={{
+              onChange: ({ value }) => {
+                const result = registerSchema.shape.firstName.safeParse(value);
+                return result.success ? undefined : result.error.issues[0].message;
+              },
+            }}>
               {(field) => {
                 const error = field.state.meta.errors?.[0];
                 return (
@@ -155,14 +160,15 @@ export default function Register() {
                       autoComplete="given-name"
                       placeholder="Jane"
                       value={field.state.value}
-                      onChange={(value) => {
-  field.handleChange(value);
-  field.handleBlur(); // ✅ FORCE instant error
-  }}
-                      // onChange={field.handleChange}
+                      // onChange={(value) => {
+                      //   field.handleChange(value);
+                      //   field.handleBlur(); // ✅ FORCE instant error
+                      // }}
+                      onChange={field.handleChange}
                       onBlur={field.handleBlur}
                       icon={<UserIcon />}
-                      invalid={!!error}
+                      // invalid={!!error}
+                      invalid={field.state.meta.isTouched && !!error}
                     />
                     {error && (
                       <p className="text-red-600 text-xs mt-1">
@@ -174,7 +180,12 @@ export default function Register() {
               }}
             </form.Field>
 
-            <form.Field name="lastName">
+            <form.Field name="lastName" validators={{
+              onChange: ({ value }) => {
+                const result = registerSchema.shape.lastName.safeParse(value);
+                return result.success ? undefined : result.error.issues[0].message;
+              },
+            }}>
               {(field) => {
                 const error = field.state.meta.errors?.[0];
                 return (
@@ -187,14 +198,14 @@ export default function Register() {
                       autoComplete="family-name"
                       placeholder="Doe"
                       value={field.state.value}
-                      // onChange={field.handleChange}
-                      onChange={(value) => {
-  field.handleChange(value);
-  field.handleBlur(); // ✅ FORCE instant error
-  }}
+                      onChange={field.handleChange}
+                      // onChange={(value) => {
+                      //   field.handleChange(value);
+                      //   field.handleBlur(); // ✅ FORCE instant error
+                      // }}
                       onBlur={field.handleBlur}
                       icon={<UserIcon />}
-                      invalid={!!error}
+                      invalid={field.state.meta.isTouched && !!error}
                     />
                     {error && (
                       <p className="text-red-600 text-xs mt-1">
@@ -208,7 +219,12 @@ export default function Register() {
           </div>
 
           {/* Email */}
-          <form.Field name="email">
+          <form.Field name="email" validators={{
+            onChange: ({ value }) => {
+              const result = registerSchema.shape.email.safeParse(value);
+              return result.success ? undefined : result.error.issues[0].message;
+            },
+          }}>
             {(field) => {
               const error = field.state.meta.errors?.[0];
               return (
@@ -222,14 +238,14 @@ export default function Register() {
                     autoComplete="email"
                     placeholder="you@example.com"
                     value={field.state.value}
-                    // onChange={field.handleChange}
-                    onChange={(value) => {
-  field.handleChange(value);
-  field.handleBlur(); // ✅ FORCE instant error
-  }}
+                    onChange={field.handleChange}
+                    // onChange={(value) => {
+                    //   field.handleChange(value);
+                    //   field.handleBlur(); // ✅ FORCE instant error
+                    // }}
                     onBlur={field.handleBlur}
                     icon={<EmailIcon />}
-                    invalid={!!error}
+                    invalid={field.state.meta.isTouched && !!error}
                   />
                   {error && (
                     <p className="text-red-600 text-xs mt-1">
@@ -242,7 +258,12 @@ export default function Register() {
           </form.Field>
 
           {/* Password */}
-          <form.Field name="password">
+          <form.Field name="password" validators={{
+            onChange: ({ value }) => {
+              const result = registerSchema.shape.password.safeParse(value);
+              return result.success ? undefined : result.error.issues[0].message;
+            },
+          }}>
             {(field) => {
               const error = field.state.meta.errors?.[0];
               const checks = passwordChecks(field.state.value);
@@ -263,10 +284,10 @@ export default function Register() {
                     onChange={(v) => {
                       field.handleChange(v);
                       setShowStrength(true);
-                      field.handleBlur()
+                      // field.handleBlur()
                     }}
                     onBlur={field.handleBlur}
-                    invalid={!!error}
+                    invalid={field.state.meta.isTouched && !!error}
                   />
 
                   {showMeter && (
@@ -286,15 +307,14 @@ export default function Register() {
                         {checks.map((c) => (
                           <li
                             key={c.label}
-                            className={`text-[11px] flex items-center gap-1.5 ${
-                              c.ok ? "text-green-600" : "text-gray-400"
-                            }`}
+                            className={`text-[11px] flex items-center gap-1.5 ${c.ok ? "text-green-600" : "text-gray-400"
+                              }`}
                           >
                             <span className="w-3 h-3 rounded-full border flex items-center justify-center text-[9px]"
                               style={{
                                 borderColor: c.ok ? "#16a34a" : "#d1d5db",
-                                background:  c.ok ? "#16a34a" : "transparent",
-                                color:       c.ok ? "white"   : "transparent",
+                                background: c.ok ? "#16a34a" : "transparent",
+                                color: c.ok ? "white" : "transparent",
                               }}
                             >
                               ✓
@@ -317,7 +337,23 @@ export default function Register() {
           </form.Field>
 
           {/* Confirm password */}
-          <form.Field name="confirmPassword">
+          <form.Field name="confirmPassword"
+            validators={{
+              onChange: ({ value, fieldApi }) => {
+                const password = fieldApi.form.state.values.password;
+
+                if (!value) {
+                  return 'Please confirm your password';
+                }
+
+                if (value !== password) {
+                  return 'Passwords do not match';
+                }
+
+                return undefined;
+              },
+            }}
+          >
             {(field) => {
               const error = field.state.meta.errors?.[0];
               return (
@@ -330,13 +366,13 @@ export default function Register() {
                     autoComplete="new-password"
                     placeholder="Re-enter your password"
                     value={field.state.value}
-                    // onChange={field.handleChange}
-                    onChange={(value) => {
-  field.handleChange(value);
-  field.handleBlur(); // ✅ FORCE instant error
-  }}
+                    onChange={field.handleChange}
+                    // onChange={(value) => {
+                    //   field.handleChange(value);
+                    //   field.handleBlur(); // ✅ FORCE instant error
+                    // }}
                     onBlur={field.handleBlur}
-                    invalid={!!error}
+                    invalid={field.state.meta.isTouched && !!error}
                   />
                   {error && (
                     <p className="text-red-600 text-xs mt-1">
