@@ -147,9 +147,9 @@ export default function Login() {
                     <label htmlFor="password" className="block text-xs font-medium text-gray-700">
                       Password
                     </label>
-                    <span className="text-xs text-gray-400">
+                    {/* <span className="text-xs text-gray-400">
                       Forgot password?
-                    </span>
+                    </span> */}
                   </div>
                   <PasswordInput
                     id="password"
