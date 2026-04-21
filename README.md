@@ -52,6 +52,11 @@ VITE_API_BASE_URL=http://localhost:5001/api/v1
 - API: http://localhost:5001/api/v1
 - Swagger: http://localhost:5001/api/docs
 
+```Existing user credentail
+email=shivanichouksey1702@gmail.com
+password =Shivani@123
+```
+
 ## Scripts
 
 **Server** (`creditx/server`):
